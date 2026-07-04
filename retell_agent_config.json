@@ -1,0 +1,221 @@
+{
+  "agent_name": "QuensultingAI Receptionist",
+  "voice_id": "11labs-Rachel",
+  "fallback_voice_ids": [],
+  "language": "en-US",
+  "agent_type": "conversational_flow",
+  "flow_nodes": [
+    {
+      "node_id": "greeting",
+      "type": "speak",
+      "text": "Hello! Thank you for calling QuensultingAI Dental Clinic. How can I help you today?",
+      "transitions": [
+        {
+          "intent": "book_appointment",
+          "next_node": "booking_start"
+        },
+        {
+          "intent": "ask_faq",
+          "next_node": "faq_handler"
+        },
+        {
+          "intent": "speak_to_human",
+          "next_node": "escalate"
+        },
+        {
+          "intent": "fallback",
+          "next_node": "fallback_handler"
+        }
+      ]
+    },
+    {
+      "node_id": "faq_handler",
+      "type": "llm_response",
+      "system_prompt": "You are a helpful dental clinic receptionist. Answer the user's question based ONLY on the following facts:\n- Working Hours: Monday to Saturday, 9:00 AM to 6:00 PM\n- Walk-ins: Yes, we accept walk-in patients, but appointments are recommended.\n- Consultation Fee: Our general consultation fee is $50.\n- Location: We are located in Pune.\n- Emergency: Yes, we provide emergency dental appointments.\n- Payment: We accept Cash, Credit Cards, and UPI.\nKeep your answers concise and polite. After answering, ask if they need anything else.",
+      "transitions": [
+        {
+          "intent": "book_appointment",
+          "next_node": "booking_start"
+        },
+        {
+          "intent": "no_further_questions",
+          "next_node": "goodbye"
+        },
+        {
+          "intent": "ask_faq",
+          "next_node": "faq_handler"
+        }
+      ]
+    },
+    {
+      "node_id": "booking_start",
+      "type": "collect_information",
+      "prompt": "I'd be happy to help you book an appointment. Which service are you looking for? We offer Dental Cleaning, Root Canal Treatment, Teeth Whitening, Braces Consultation, Tooth Extraction, and General Consultation.",
+      "parameter_name": "service",
+      "transitions": [
+        {
+          "intent": "service_provided",
+          "next_node": "booking_datetime"
+        }
+      ]
+    },
+    {
+      "node_id": "booking_datetime",
+      "type": "collect_information",
+      "prompt": "Great. What date and time would you like to come in? We are open Monday to Saturday, 9 AM to 6 PM.",
+      "parameter_name": "datetime",
+      "transitions": [
+        {
+          "intent": "datetime_provided",
+          "next_node": "booking_details_name"
+        }
+      ]
+    },
+    {
+      "node_id": "booking_details_name",
+      "type": "collect_information",
+      "prompt": "Could I please get your full name?",
+      "parameter_name": "patient_name",
+      "transitions": [
+        {
+          "intent": "name_provided",
+          "next_node": "booking_details_phone"
+        }
+      ]
+    },
+    {
+      "node_id": "booking_details_phone",
+      "type": "collect_information",
+      "prompt": "Thank you. And what is the best phone number to reach you?",
+      "parameter_name": "patient_phone",
+      "transitions": [
+        {
+          "intent": "phone_provided",
+          "next_node": "booking_details_email"
+        }
+      ]
+    },
+    {
+      "node_id": "booking_details_email",
+      "type": "collect_information",
+      "prompt": "Lastly, could you provide your email address so we can send you a confirmation?",
+      "parameter_name": "patient_email",
+      "transitions": [
+        {
+          "intent": "email_provided",
+          "next_node": "trigger_booking_tool"
+        },
+        {
+          "intent": "email_declined",
+          "next_node": "trigger_booking_tool"
+        }
+      ]
+    },
+    {
+      "node_id": "trigger_booking_tool",
+      "type": "action",
+      "tool_name": "book_appointment",
+      "tool_arguments": {
+        "name": "{{patient_name}}",
+        "phone": "{{patient_phone}}",
+        "email": "{{patient_email}}",
+        "service": "{{service}}",
+        "date": "{{datetime.date}}",
+        "time": "{{datetime.time}}"
+      },
+      "transitions": [
+        {
+          "intent": "tool_success",
+          "next_node": "booking_success"
+        },
+        {
+          "intent": "tool_failure",
+          "next_node": "booking_failure"
+        }
+      ]
+    },
+    {
+      "node_id": "booking_success",
+      "type": "speak",
+      "text": "Your appointment has been successfully booked! You will receive a confirmation email shortly. Is there anything else I can help you with?",
+      "transitions": [
+        {
+          "intent": "no",
+          "next_node": "goodbye"
+        },
+        {
+          "intent": "yes",
+          "next_node": "greeting"
+        }
+      ]
+    },
+    {
+      "node_id": "booking_failure",
+      "type": "speak",
+      "text": "I apologize, but I encountered an error while trying to save your appointment. Let me transfer you to a human receptionist who can help.",
+      "transitions": [
+        {
+          "intent": "always",
+          "next_node": "escalate"
+        }
+      ]
+    },
+    {
+      "node_id": "escalate",
+      "type": "action",
+      "tool_name": "escalate_call",
+      "tool_arguments": {
+        "reason": "Customer requested human or technical failure."
+      },
+      "text": "Please hold while I transfer you to the next available representative.",
+      "transitions": []
+    },
+    {
+      "node_id": "goodbye",
+      "type": "speak",
+      "text": "Thank you for calling QuensultingAI Dental Clinic. Have a wonderful day!",
+      "transitions": []
+    },
+    {
+      "node_id": "fallback_handler",
+      "type": "speak",
+      "text": "I'm sorry, I didn't quite catch that. Could you please repeat yourself or let me know if you want to book an appointment?",
+      "transitions": [
+        {
+          "intent": "always",
+          "next_node": "greeting"
+        }
+      ]
+    }
+  ],
+  "custom_tools": [
+    {
+      "name": "book_appointment",
+      "description": "Books a dental appointment and saves details to the database.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": { "type": "string" },
+          "phone": { "type": "string" },
+          "email": { "type": "string" },
+          "service": { "type": "string" },
+          "date": { "type": "string" },
+          "time": { "type": "string" }
+        },
+        "required": ["name", "phone", "service", "date", "time"]
+      },
+      "url": "https://YOUR_NGROK_URL/webhook/retell_custom_tool"
+    },
+    {
+      "name": "escalate_call",
+      "description": "Transfers the call to a human agent.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "reason": { "type": "string" }
+        }
+      },
+      "url": "https://YOUR_NGROK_URL/webhook/retell_custom_tool"
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: quensultingai-backend
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: AIRTABLE_API_KEY
+        sync: false
+      - key: AIRTABLE_BASE_ID
+        sync: false
+      - key: AIRTABLE_TABLE_NAME
+        sync: false
+      - key: SMTP_SERVER
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USERNAME
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: CLINIC_NAME
+        sync: false
+      - key: CLINIC_SENDER_EMAIL
+        sync: false
+      - key: RETELL_API_KEY
+        sync: false
+      - key: RETELL_AGENT_ID
+        sync: false
