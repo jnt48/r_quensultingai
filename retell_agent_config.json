@@ -204,7 +204,7 @@
         },
         "required": ["name", "phone", "service", "date", "time"]
       },
-      "url": "https://YOUR_NGROK_URL/webhook/retell_custom_tool"
+      "url": "https://quensultingai.onrender.com/webhook/retell_custom_tool"
     },
     {
       "name": "escalate_call",
@@ -215,7 +215,7 @@
           "reason": { "type": "string" }
         }
       },
-      "url": "https://YOUR_NGROK_URL/webhook/retell_custom_tool"
+      "url": "https://quensultingai.onrender.com/webhook/retell_custom_tool"
     }
   ]
 }

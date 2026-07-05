@@ -1,3 +1,6 @@
+# Utility scripts (contain API keys)
+update_retell_flow.py
+
 # Python
 __pycache__/
 *.pyc
