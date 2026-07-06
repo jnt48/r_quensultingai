@@ -1,221 +1,536 @@
-{
-  "agent_name": "QuensultingAI Receptionist",
-  "voice_id": "11labs-Rachel",
-  "fallback_voice_ids": [],
-  "language": "en-US",
-  "agent_type": "conversational_flow",
-  "flow_nodes": [
-    {
-      "node_id": "greeting",
-      "type": "speak",
-      "text": "Hello! Thank you for calling QuensultingAI Dental Clinic. How can I help you today?",
-      "transitions": [
-        {
-          "intent": "book_appointment",
-          "next_node": "booking_start"
-        },
-        {
-          "intent": "ask_faq",
-          "next_node": "faq_handler"
-        },
-        {
-          "intent": "speak_to_human",
-          "next_node": "escalate"
-        },
-        {
-          "intent": "fallback",
-          "next_node": "fallback_handler"
-        }
-      ]
-    },
-    {
-      "node_id": "faq_handler",
-      "type": "llm_response",
-      "system_prompt": "You are a helpful dental clinic receptionist. Answer the user's question based ONLY on the following facts:\n- Working Hours: Monday to Saturday, 9:00 AM to 6:00 PM\n- Walk-ins: Yes, we accept walk-in patients, but appointments are recommended.\n- Consultation Fee: Our general consultation fee is $50.\n- Location: We are located in Pune.\n- Emergency: Yes, we provide emergency dental appointments.\n- Payment: We accept Cash, Credit Cards, and UPI.\nKeep your answers concise and polite. After answering, ask if they need anything else.",
-      "transitions": [
-        {
-          "intent": "book_appointment",
-          "next_node": "booking_start"
-        },
-        {
-          "intent": "no_further_questions",
-          "next_node": "goodbye"
-        },
-        {
-          "intent": "ask_faq",
-          "next_node": "faq_handler"
-        }
-      ]
-    },
-    {
-      "node_id": "booking_start",
-      "type": "collect_information",
-      "prompt": "I'd be happy to help you book an appointment. Which service are you looking for? We offer Dental Cleaning, Root Canal Treatment, Teeth Whitening, Braces Consultation, Tooth Extraction, and General Consultation.",
-      "parameter_name": "service",
-      "transitions": [
-        {
-          "intent": "service_provided",
-          "next_node": "booking_datetime"
-        }
-      ]
-    },
-    {
-      "node_id": "booking_datetime",
-      "type": "collect_information",
-      "prompt": "Great. What date and time would you like to come in? We are open Monday to Saturday, 9 AM to 6 PM.",
-      "parameter_name": "datetime",
-      "transitions": [
-        {
-          "intent": "datetime_provided",
-          "next_node": "booking_details_name"
-        }
-      ]
-    },
-    {
-      "node_id": "booking_details_name",
-      "type": "collect_information",
-      "prompt": "Could I please get your full name?",
-      "parameter_name": "patient_name",
-      "transitions": [
-        {
-          "intent": "name_provided",
-          "next_node": "booking_details_phone"
-        }
-      ]
-    },
-    {
-      "node_id": "booking_details_phone",
-      "type": "collect_information",
-      "prompt": "Thank you. And what is the best phone number to reach you?",
-      "parameter_name": "patient_phone",
-      "transitions": [
-        {
-          "intent": "phone_provided",
-          "next_node": "booking_details_email"
-        }
-      ]
-    },
-    {
-      "node_id": "booking_details_email",
-      "type": "collect_information",
-      "prompt": "Lastly, could you provide your email address so we can send you a confirmation?",
-      "parameter_name": "patient_email",
-      "transitions": [
-        {
-          "intent": "email_provided",
-          "next_node": "trigger_booking_tool"
-        },
-        {
-          "intent": "email_declined",
-          "next_node": "trigger_booking_tool"
-        }
-      ]
-    },
-    {
-      "node_id": "trigger_booking_tool",
-      "type": "action",
-      "tool_name": "book_appointment",
-      "tool_arguments": {
-        "name": "{{patient_name}}",
-        "phone": "{{patient_phone}}",
-        "email": "{{patient_email}}",
-        "service": "{{service}}",
-        "date": "{{datetime.date}}",
-        "time": "{{datetime.time}}"
-      },
-      "transitions": [
-        {
-          "intent": "tool_success",
-          "next_node": "booking_success"
-        },
-        {
-          "intent": "tool_failure",
-          "next_node": "booking_failure"
-        }
-      ]
-    },
-    {
-      "node_id": "booking_success",
-      "type": "speak",
-      "text": "Your appointment has been successfully booked! You will receive a confirmation email shortly. Is there anything else I can help you with?",
-      "transitions": [
-        {
-          "intent": "no",
-          "next_node": "goodbye"
-        },
-        {
-          "intent": "yes",
-          "next_node": "greeting"
-        }
-      ]
-    },
-    {
-      "node_id": "booking_failure",
-      "type": "speak",
-      "text": "I apologize, but I encountered an error while trying to save your appointment. Let me transfer you to a human receptionist who can help.",
-      "transitions": [
-        {
-          "intent": "always",
-          "next_node": "escalate"
-        }
-      ]
-    },
-    {
-      "node_id": "escalate",
-      "type": "action",
-      "tool_name": "escalate_call",
-      "tool_arguments": {
-        "reason": "Customer requested human or technical failure."
-      },
-      "text": "Please hold while I transfer you to the next available representative.",
-      "transitions": []
-    },
-    {
-      "node_id": "goodbye",
-      "type": "speak",
-      "text": "Thank you for calling QuensultingAI Dental Clinic. Have a wonderful day!",
-      "transitions": []
-    },
-    {
-      "node_id": "fallback_handler",
-      "type": "speak",
-      "text": "I'm sorry, I didn't quite catch that. Could you please repeat yourself or let me know if you want to book an appointment?",
-      "transitions": [
-        {
-          "intent": "always",
-          "next_node": "greeting"
-        }
-      ]
-    }
-  ],
-  "custom_tools": [
-    {
-      "name": "book_appointment",
-      "description": "Books a dental appointment and saves details to the database.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "name": { "type": "string" },
-          "phone": { "type": "string" },
-          "email": { "type": "string" },
-          "service": { "type": "string" },
-          "date": { "type": "string" },
-          "time": { "type": "string" }
-        },
-        "required": ["name", "phone", "service", "date", "time"]
-      },
-      "url": "https://quensultingai.onrender.com/webhook/retell_custom_tool"
-    },
-    {
-      "name": "escalate_call",
-      "description": "Transfers the call to a human agent.",
-      "parameters": {
-        "type": "object",
-        "properties": {
-          "reason": { "type": "string" }
-        }
-      },
-      "url": "https://quensultingai.onrender.com/webhook/retell_custom_tool"
-    }
-  ]
+﻿{
+    "conversation_flow":  {
+                              "conversation_flow_id":  "conversation_flow_17c46265f35a",
+                              "version":  0,
+                              "last_modification_timestamp":  1783310396801,
+                              "nodes":  [
+                                            {
+                                                "instruction":  {
+                                                                    "type":  "prompt",
+                                                                    "text":  "You are the friendly AI receptionist for QuensultingAI Dental Clinic. Greet the caller warmly and say exactly: \u0027Hello! Thank you for calling QuensultingAI Dental Clinic. I\u0027m your AI receptionist. I can help you book an appointment, answer your questions, or connect you to our team. How can I help you today?\u0027"
+                                                                },
+                                                "name":  "Welcome",
+                                                "edges":  [
+                                                              {
+                                                                  "destination":  "node-faq",
+                                                                  "id":  "edge-welcome-to-faq",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User asks about timings, hours, fees, location, walk-ins, payments, services, emergency, or any general question about the clinic"
+                                                                                           }
+                                                              },
+                                                              {
+                                                                  "destination":  "node-collect-service",
+                                                                  "id":  "edge-welcome-to-book",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User wants to book, schedule, or make an appointment"
+                                                                                           }
+                                                              },
+                                                              {
+                                                                  "destination":  "node-escalate",
+                                                                  "id":  "edge-welcome-to-escalate",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User asks to speak to a human, staff member, doctor, or requests a transfer"
+                                                                                           }
+                                                              },
+                                                              {
+                                                                  "destination":  "node-fallback",
+                                                                  "id":  "edge-welcome-to-fallback",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User says something unclear, off-topic, or the intent is not understood"
+                                                                                           }
+                                                              }
+                                                          ],
+                                                "start_speaker":  "agent",
+                                                "id":  "start-node-1782911165250",
+                                                "type":  "conversation",
+                                                "display_position":  {
+                                                                         "x":  294,
+                                                                         "y":  294
+                                                                     }
+                                            },
+                                            {
+                                                "instruction":  {
+                                                                    "type":  "prompt",
+                                                                    "text":  "You are the receptionist at QuensultingAI Dental Clinic. Answer the caller\u0027s question using ONLY these facts:\n- Working Hours: Monday to Saturday, 9:00 AM to 6:00 PM IST. Closed on Sundays and public holidays.\n- Walk-ins: Yes, walk-in patients are accepted, but booking in advance is recommended.\n- Consultation Fee: General dental consultation is Rs 500. Specialised treatments vary.\n- Location: Pune, Maharashtra.\n- Emergency: Yes, we provide emergency dental appointments during working hours.\n- Payments: Cash, Credit/Debit Cards, and all major UPI platforms (Google Pay, PhonePe, Paytm).\n- Services: Dental Cleaning, Root Canal Treatment, Teeth Whitening, Braces Consultation, Tooth Extraction, General Dental Consultation.\nKeep your answer concise and friendly. After answering, ask: \u0027Is there anything else I can help you with?\u0027"
+                                                                },
+                                                "name":  "FAQ",
+                                                "edges":  [
+                                                              {
+                                                                  "destination":  "node-collect-service",
+                                                                  "id":  "edge-faq-to-book",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User wants to book or schedule an appointment"
+                                                                                           }
+                                                              },
+                                                              {
+                                                                  "destination":  "node-faq",
+                                                                  "id":  "edge-faq-loop",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User has another question about the clinic"
+                                                                                           }
+                                                              },
+                                                              {
+                                                                  "destination":  "node-goodbye",
+                                                                  "id":  "edge-faq-to-goodbye",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User says no, thank you, goodbye, or has no further questions"
+                                                                                           }
+                                                              }
+                                                          ],
+                                                "start_speaker":  "agent",
+                                                "id":  "node-faq",
+                                                "type":  "conversation",
+                                                "display_position":  {
+                                                                         "x":  294,
+                                                                         "y":  -282
+                                                                     }
+                                            },
+                                            {
+                                                "instruction":  {
+                                                                    "type":  "prompt",
+                                                                    "text":  "Ask the user which dental service they need. Say: \u0027Great! Which service are you looking for? We offer: Dental Cleaning, Root Canal Treatment, Teeth Whitening, Braces Consultation, Tooth Extraction, and General Dental Consultation.\u0027 Wait for them to name a service. Store it as the selected service."
+                                                                },
+                                                "name":  "Collect Service",
+                                                "edges":  [
+                                                              {
+                                                                  "destination":  "node-collect-datetime",
+                                                                  "id":  "edge-service-to-datetime",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User mentions any dental service or procedure they want"
+                                                                                           }
+                                                              }
+                                                          ],
+                                                "start_speaker":  "agent",
+                                                "id":  "node-collect-service",
+                                                "type":  "conversation",
+                                                "display_position":  {
+                                                                         "x":  700,
+                                                                         "y":  433
+                                                                     }
+                                            },
+                                            {
+                                                "instruction":  {
+                                                                    "type":  "prompt",
+                                                                    "text":  "Ask the user for their preferred appointment date and time. Say: \u0027What date and time would you prefer for your appointment? We are open Monday to Saturday, from 9 AM to 6 PM.\u0027 Listen carefully and remember both the date and the time they say."
+                                                                },
+                                                "name":  "Collect Date and Time",
+                                                "edges":  [
+                                                              {
+                                                                  "destination":  "node-collect-name",
+                                                                  "id":  "edge-datetime-to-name",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User provides a date and/or time for their appointment"
+                                                                                           }
+                                                              }
+                                                          ],
+                                                "start_speaker":  "agent",
+                                                "id":  "node-collect-datetime",
+                                                "type":  "conversation",
+                                                "display_position":  {
+                                                                         "x":  1050,
+                                                                         "y":  433
+                                                                     }
+                                            },
+                                            {
+                                                "instruction":  {
+                                                                    "type":  "prompt",
+                                                                    "text":  "Ask the user for their full name. Say: \u0027Could I please get your full name for the appointment?\u0027 Listen and remember their name exactly as they say it."
+                                                                },
+                                                "name":  "Collect Name",
+                                                "edges":  [
+                                                              {
+                                                                  "destination":  "node-collect-phone",
+                                                                  "id":  "edge-name-to-phone",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User provides their name"
+                                                                                           }
+                                                              }
+                                                          ],
+                                                "start_speaker":  "agent",
+                                                "id":  "node-collect-name",
+                                                "type":  "conversation",
+                                                "display_position":  {
+                                                                         "x":  1400,
+                                                                         "y":  433
+                                                                     }
+                                            },
+                                            {
+                                                "instruction":  {
+                                                                    "type":  "prompt",
+                                                                    "text":  "Ask the user for their phone number. Say: \u0027Thank you! And what is the best phone number to reach you on?\u0027 Listen and remember their phone number."
+                                                                },
+                                                "name":  "Collect Phone",
+                                                "edges":  [
+                                                              {
+                                                                  "destination":  "node-collect-email",
+                                                                  "id":  "edge-phone-to-email",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User provides a phone number"
+                                                                                           }
+                                                              }
+                                                          ],
+                                                "start_speaker":  "agent",
+                                                "id":  "node-collect-phone",
+                                                "type":  "conversation",
+                                                "display_position":  {
+                                                                         "x":  1750,
+                                                                         "y":  433
+                                                                     }
+                                            },
+                                            {
+                                                "instruction":  {
+                                                                    "type":  "prompt",
+                                                                    "text":  "Ask the user for their email address for confirmation. Say: \u0027Lastly, could you provide your email address? We will send you a confirmation email with your appointment details and a calendar invite. Or just say skip if you prefer not to share it.\u0027 If they skip, set email to empty string."
+                                                                },
+                                                "name":  "Collect Email",
+                                                "edges":  [
+                                                              {
+                                                                  "destination":  "node-book-tool",
+                                                                  "id":  "edge-email-to-book",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User provides an email address or says skip, no thanks, or doesn\u0027t want to share"
+                                                                                           }
+                                                              }
+                                                          ],
+                                                "start_speaker":  "agent",
+                                                "id":  "node-collect-email",
+                                                "type":  "conversation",
+                                                "display_position":  {
+                                                                         "x":  2100,
+                                                                         "y":  433
+                                                                     }
+                                            },
+                                            {
+                                                "tool_id":  "tool-1783138023895",
+                                                "name":  "Book Appointment",
+                                                "edges":  [
+                                                              {
+                                                                  "destination":  "node-booking-confirmed",
+                                                                  "id":  "edge-tool-success",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "Tool call succeeded and appointment was booked successfully"
+                                                                                           }
+                                                              },
+                                                              {
+                                                                  "destination":  "node-booking-failed",
+                                                                  "id":  "edge-tool-fail",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "Tool call failed or returned an error"
+                                                                                           }
+                                                              }
+                                                          ],
+                                                "enable_typing_sound":  false,
+                                                "id":  "node-book-tool",
+                                                "type":  "function",
+                                                "tool_type":  "local",
+                                                "speak_during_execution":  true,
+                                                "display_position":  {
+                                                                         "x":  2450,
+                                                                         "y":  433
+                                                                     },
+                                                "wait_for_result":  true
+                                            },
+                                            {
+                                                "instruction":  {
+                                                                    "type":  "prompt",
+                                                                    "text":  "Confirm the booking enthusiastically. Say: \u0027Your appointment has been successfully booked! You will receive a confirmation email shortly with all your appointment details and a calendar invite you can add with one click. Is there anything else I can help you with today?\u0027"
+                                                                },
+                                                "name":  "Booking Confirmed",
+                                                "edges":  [
+                                                              {
+                                                                  "destination":  "start-node-1782911165250",
+                                                                  "id":  "edge-confirmed-to-welcome",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User says yes or has another question"
+                                                                                           }
+                                                              },
+                                                              {
+                                                                  "destination":  "node-goodbye",
+                                                                  "id":  "edge-confirmed-to-goodbye",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "User says no, thank you, or goodbye"
+                                                                                           }
+                                                              }
+                                                          ],
+                                                "start_speaker":  "agent",
+                                                "id":  "node-booking-confirmed",
+                                                "type":  "conversation",
+                                                "display_position":  {
+                                                                         "x":  2800,
+                                                                         "y":  250
+                                                                     }
+                                            },
+                                            {
+                                                "instruction":  {
+                                                                    "type":  "prompt",
+                                                                    "text":  "Apologise and offer to transfer. Say: \u0027I apologise, but I encountered an issue while trying to save your appointment. Let me transfer you to one of our team members who can complete this for you right away. Please hold for just a moment.\u0027"
+                                                                },
+                                                "name":  "Booking Failed",
+                                                "edges":  [
+                                                              {
+                                                                  "destination":  "node-escalate",
+                                                                  "id":  "edge-failed-to-escalate",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "Always proceed to escalate"
+                                                                                           }
+                                                              }
+                                                          ],
+                                                "start_speaker":  "agent",
+                                                "id":  "node-booking-failed",
+                                                "type":  "conversation",
+                                                "display_position":  {
+                                                                         "x":  2800,
+                                                                         "y":  620
+                                                                     }
+                                            },
+                                            {
+                                                "instruction":  {
+                                                                    "type":  "prompt",
+                                                                    "text":  "The caller said something unclear. Politely ask them to repeat. Say: \u0027I am sorry, I did not quite catch that. Could you please repeat? I can help you book an appointment, answer questions about our clinic, or connect you to our team.\u0027"
+                                                                },
+                                                "name":  "Fallback",
+                                                "edges":  [
+                                                              {
+                                                                  "destination":  "start-node-1782911165250",
+                                                                  "id":  "edge-fallback-to-welcome",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "Always return to the welcome node"
+                                                                                           }
+                                                              }
+                                                          ],
+                                                "start_speaker":  "agent",
+                                                "id":  "node-fallback",
+                                                "type":  "conversation",
+                                                "display_position":  {
+                                                                         "x":  294,
+                                                                         "y":  822
+                                                                     }
+                                            },
+                                            {
+                                                "instruction":  {
+                                                                    "type":  "prompt",
+                                                                    "text":  "Tell the caller you are transferring them. Say: \u0027Of course! Please hold for just a moment while I connect you to one of our team members. Thank you for your patience!\u0027"
+                                                                },
+                                                "name":  "Escalate to Human",
+                                                "edges":  [
+                                                              {
+                                                                  "destination":  "node-goodbye",
+                                                                  "id":  "edge-escalate-to-goodbye",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "Always proceed to end the call after informing the user"
+                                                                                           }
+                                                              }
+                                                          ],
+                                                "start_speaker":  "agent",
+                                                "id":  "node-escalate",
+                                                "type":  "conversation",
+                                                "display_position":  {
+                                                                         "x":  -200,
+                                                                         "y":  433
+                                                                     }
+                                            },
+                                            {
+                                                "instruction":  {
+                                                                    "type":  "prompt",
+                                                                    "text":  "Say a warm goodbye. Say: \u0027Thank you for calling QuensultingAI Dental Clinic. Have a wonderful day and we look forward to seeing you soon! Goodbye!\u0027"
+                                                                },
+                                                "name":  "Goodbye",
+                                                "edges":  [
+                                                              {
+                                                                  "destination":  "end-call-node-1782911165250",
+                                                                  "id":  "edge-goodbye-to-end",
+                                                                  "transition_condition":  {
+                                                                                               "type":  "prompt",
+                                                                                               "prompt":  "Always end the call after the goodbye"
+                                                                                           }
+                                                              }
+                                                          ],
+                                                "start_speaker":  "agent",
+                                                "id":  "node-goodbye",
+                                                "type":  "conversation",
+                                                "display_position":  {
+                                                                         "x":  700,
+                                                                         "y":  770
+                                                                     }
+                                            },
+                                            {
+                                                "name":  "End Call",
+                                                "id":  "end-call-node-1782911165250",
+                                                "type":  "end",
+                                                "display_position":  {
+                                                                         "x":  1050,
+                                                                         "y":  770
+                                                                     },
+                                                "instruction":  {
+                                                                    "type":  "prompt",
+                                                                    "text":  "Politely end the call"
+                                                                }
+                                            }
+                                        ],
+                              "start_speaker":  "agent",
+                              "tools":  [
+                                            {
+                                                "parameter_type":  "json",
+                                                "headers":  {
+
+                                                            },
+                                                "method":  "POST",
+                                                "query_params":  {
+
+                                                                 },
+                                                "description":  "Books a dental appointment and saves the caller\u0027s details to the database. Also sends a confirmation email.",
+                                                "enable_typing_sound":  false,
+                                                "type":  "custom",
+                                                "url":  "https://quensultingai.onrender.com/webhook/retell_custom_tool",
+                                                "tool_id":  "tool-1783138023895",
+                                                "args_at_root":  false,
+                                                "timeout_ms":  120000,
+                                                "speak_after_execution":  true,
+                                                "name":  "book_appointment",
+                                                "response_variables":  {
+
+                                                                       },
+                                                "speak_during_execution":  true,
+                                                "parameters":  {
+                                                                   "type":  "object",
+                                                                   "properties":  {
+                                                                                      "name":  {
+                                                                                                   "type":  "string",
+                                                                                                   "description":  "Full name of the patient"
+                                                                                               },
+                                                                                      "date":  {
+                                                                                                   "type":  "string",
+                                                                                                   "description":  "Appointment date (e.g. July 7 2025)"
+                                                                                               },
+                                                                                      "time":  {
+                                                                                                   "type":  "string",
+                                                                                                   "description":  "Appointment time (e.g. 11 AM)"
+                                                                                               },
+                                                                                      "phone":  {
+                                                                                                    "type":  "string",
+                                                                                                    "description":  "Phone number of the patient"
+                                                                                                },
+                                                                                      "email":  {
+                                                                                                    "type":  "string",
+                                                                                                    "description":  "Email address of the patient (can be empty)"
+                                                                                                },
+                                                                                      "service":  {
+                                                                                                      "type":  "string",
+                                                                                                      "description":  "Dental service requested"
+                                                                                                  }
+                                                                                  },
+                                                                   "required":  [
+                                                                                    "name",
+                                                                                    "phone",
+                                                                                    "service",
+                                                                                    "date",
+                                                                                    "time"
+                                                                                ]
+                                                               }
+                                            },
+                                            {
+                                                "parameter_type":  "json",
+                                                "headers":  {
+
+                                                            },
+                                                "method":  "POST",
+                                                "query_params":  {
+
+                                                                 },
+                                                "description":  "Transfers the call to a human agent when the user requests it or when booking fails.",
+                                                "enable_typing_sound":  false,
+                                                "type":  "custom",
+                                                "url":  "https://quensultingai.onrender.com/webhook/retell_custom_tool",
+                                                "tool_id":  "tool-1783138087166",
+                                                "args_at_root":  false,
+                                                "timeout_ms":  120000,
+                                                "speak_after_execution":  true,
+                                                "name":  "escalate_call",
+                                                "response_variables":  {
+
+                                                                       },
+                                                "speak_during_execution":  false,
+                                                "parameters":  {
+                                                                   "type":  "object",
+                                                                   "properties":  {
+                                                                                      "reason":  {
+                                                                                                     "type":  "string",
+                                                                                                     "description":  "Reason for escalation"
+                                                                                                 }
+                                                                                  }
+                                                               }
+                                            }
+                                        ],
+                              "model_choice":  {
+                                                   "type":  "cascading",
+                                                   "model":  "gpt-4.1"
+                                               },
+                              "tool_call_strict_mode":  false,
+                              "kb_config":  {
+                                                "top_k":  3,
+                                                "filter_score":  0.6
+                                            },
+                              "begin_tag_display_position":  {
+                                                                 "x":  122,
+                                                                 "y":  333
+                                                             },
+                              "is_published":  false,
+                              "is_transfer_cf":  false
+                          },
+    "agent":  {
+                  "agent_id":  "agent_3e78c6310c6b3c6149072786e6",
+                  "channel":  "voice",
+                  "last_modification_timestamp":  1782911166548,
+                  "agent_name":  "Conversation Flow Agent",
+                  "response_engine":  {
+                                          "type":  "conversation-flow",
+                                          "version":  0,
+                                          "conversation_flow_id":  "conversation_flow_17c46265f35a"
+                                      },
+                  "language":  "en-US",
+                  "data_storage_setting":  "everything",
+                  "opt_in_signed_url":  false,
+                  "version":  0,
+                  "assigned_tags":  [
+
+                                    ],
+                  "is_published":  false,
+                  "post_call_analysis_model":  "gpt-4.1",
+                  "pii_config":  {
+                                     "mode":  "post_call",
+                                     "categories":  [
+
+                                                    ]
+                                 },
+                  "handbook_config":  {
+                                          "default_personality":  true,
+                                          "ai_disclosure":  true
+                                      },
+                  "voice_id":  "retell-Cimo",
+                  "max_call_duration_ms":  3600000,
+                  "interruption_sensitivity":  0.9,
+                  "allow_user_dtmf":  true,
+                  "user_dtmf_options":  {
+
+                                        }
+              }
 }
