@@ -1,8 +1,7 @@
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import Optional
+
 import uvicorn
 import logging
 import os
@@ -76,79 +75,8 @@ async def create_web_call():
         logger.error(f"Network error calling Retell API: {e}")
         raise HTTPException(status_code=503, detail="Failed to reach Retell API. Check your internet connection.")
 
-class AppointmentRequest(BaseModel):
-    name: str
-    phone: str
-    service: str
-    date: str
-    time: str
-    email: Optional[str] = None
-
-class EscalationRequest(BaseModel):
-    caller_name: Optional[str] = None
-    reason: str
-
-@app.post("/webhook/book_appointment")
-async def handle_book_appointment(request: AppointmentRequest):
-    """
-    Webhook endpoint to be called by Retell AI Flow when the user wants to book an appointment.
-    """
-    # 0. Check availability
-    is_available = check_availability(request.date, request.time)
-    if not is_available:
-        return {
-            "status": "error",
-            "message": f"I'm sorry, but {request.date} at {request.time} is already booked. Could you please suggest another time?",
-            "details": {"available": False}
-        }
-        
-    # 1. Save to Airtable
-    db_success = save_to_airtable(
-        name=request.name,
-        phone=request.phone,
-        service=request.service,
-        date=request.date,
-        time=request.time,
-        email=request.email
-    )
-    
-    # 2. Send Email if provided
-    email_success = False
-    if request.email:
-        email_success = send_confirmation_email(
-            patient_email=request.email,
-            name=request.name,
-            service=request.service,
-            date=request.date,
-            time=request.time
-        )
-    
-    # Return a response that Retell AI can speak back to the user
-    message = f"Appointment confirmed for {request.name} on {request.date} at {request.time} for {request.service}."
-    if not db_success:
-        message = "I'm sorry, I was unable to save your appointment in our database at this moment. Please try again later."
-        
-    return {
-        "status": "success" if db_success else "error",
-        "message": message,
-        "details": {
-            "airtable_saved": db_success,
-            "email_sent": email_success
-        }
-    }
 
 
-@app.post("/webhook/escalate_call")
-async def handle_escalation(request: EscalationRequest):
-    """
-    Webhook endpoint to handle call escalation.
-    """
-    logger.info(f"Call escalated. Reason: {request.reason}")
-    # In a real scenario, this could trigger a Twilio SMS, Slack message, etc.
-    return {
-        "status": "success",
-        "message": "A human agent has been notified and will take over shortly."
-    }
 
 # Fallback for generic Retell AI Custom Tool format if they use the native Tool Calling feature
 @app.post("/webhook/retell_custom_tool")
